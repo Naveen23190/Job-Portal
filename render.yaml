@@ -1,0 +1,56 @@
+databases:
+  - name: jobhire-db
+    databaseName: job_portal
+    user: jobhire
+    plan: free
+    region: singapore
+
+services:
+  - type: web
+    name: jobhire-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/jobs
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: jobhire-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: jobhire-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: jobhire-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: jobhire-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: jobhire-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SEED_DEMO_DATA
+        value: "false"
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://jobhire-web.onrender.com
+
+  - type: web
+    name: jobhire-web
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://jobhire-api.onrender.com/api
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

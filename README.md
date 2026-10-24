@@ -112,6 +112,19 @@ Interview proposals require a future `proposedAt` timestamp, a duration between 
 
 The live event stream sends only update notifications (not application or interview details); the frontend refetches the user's authorized REST data after each event. It authenticates with the bearer token in the request header, reconnects after interruptions, and receives a heartbeat every 20 seconds. The in-memory SSE registry is local to one backend process; multi-instance deployments need a shared event broker such as Redis or PostgreSQL-based messaging.
 
+## Deploy the complete application to Render
+
+The repository includes a Render Blueprint (`render.yaml`) and a root `Dockerfile`. These define a static React site, a Docker-based Spring Boot API, and a PostgreSQL database in Singapore. To deploy:
+
+1. Push the repository and its latest changes to GitHub.
+2. Sign in to [Render](https://dashboard.render.com/) and choose **New > Blueprint**.
+3. Connect the GitHub repository and select its `main` branch. Render reads `render.yaml`; review the three resources and create the Blueprint.
+4. Wait for the database, API, and frontend deploys to finish. Open the `jobhire-web` static-site URL.
+
+The Blueprint connects the API to PostgreSQL, generates a JWT signing secret, disables demo-data seeding, configures CORS for the generated frontend URL, and sets the frontend API URL. Do not replace the generated JWT secret with the development fallback from `application.properties`. If you rename a service or use a custom frontend domain, update `VITE_API_URL` on `jobhire-web` and `CORS_ALLOWED_ORIGINS` on `jobhire-api` to the corresponding HTTPS URLs, then redeploy both services.
+
+The Blueprint selects Render's Free plans for an initial demonstration. Free web services can spin down when idle, causing a delay on the first request. Free Render Postgres databases expire after 30 days; do not use this configuration for production or data you need to keep. Upgrade the database to a persistent paid plan before relying on it, and arrange backups before changing or deleting a database. The live-update stream is process-local, so keep the API to one instance unless you add shared event messaging.
+
 `PUT /api/profile/me` accepts `fullName`, `bio`, `resumeUrl`, `skills`, `education`, and `companyName` as applicable to the signed-in role. For job seekers, `skills` and `education` are arrays of strings. Resume URLs must use HTTP or HTTPS. The profile modal shows a completion score and lets the user preview the saved link. Hibernate's `ddl-auto=update` adds the profile fields to existing local databases on backend startup.
 
 For regular roles, job create/update requests accept optional `salaryMinLpa` and `salaryMaxLpa` decimal fields. Values represent annual CTC in lakhs per annum (LPA); for example, `8.5` means ₹8.5 lakh per year. For internships, use `stipendMinMonthly` and `stipendMaxMonthly`, which represent monthly amounts in rupees. Do not submit both annual CTC and monthly stipend values for one posting; each range's minimum cannot exceed its maximum. CTC is the employer's annual cost-to-company figure, not a promise of monthly take-home pay.
