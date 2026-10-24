@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <title>Northstar Technologies</title>
+  <rect width="48" height="48" rx="13" fill="#172638"/>
+  <path d="M24 7.5 28.1 19l11.4 5-11.4 4L24 40.5l-4.1-12.4-11.4-4 11.4-5L24 7.5Z" fill="#F2BE5C"/>
+  <path d="m24 15 2.7 7.1 7.1 2.1-7.1 2.8L24 34l-2.7-7-7.1-2.8 7.1-2.1L24 15Z" fill="#FFF4D8"/>
+  <circle cx="36.5" cy="12" r="2" fill="#8FC4D8"/>
+</svg>
