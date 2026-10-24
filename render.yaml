@@ -3,7 +3,7 @@ services:
     name: jobhire-api
     runtime: docker
     plan: free
-    region: Virginia (US East)
+    region: singapore
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/jobs
