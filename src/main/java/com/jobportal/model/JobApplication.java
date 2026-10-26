@@ -35,4 +35,52 @@ public class JobApplication {
 
     @Column(nullable = false, updatable = false)
     private Instant appliedAt = Instant.now();
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public JobPosting getJob() {
+        return job;
+    }
+
+    public void setJob(JobPosting job) {
+        this.job = job;
+    }
+
+    public UserAccount getApplicant() {
+        return applicant;
+    }
+
+    public void setApplicant(UserAccount applicant) {
+        this.applicant = applicant;
+    }
+
+    public String getCoverLetter() {
+        return coverLetter;
+    }
+
+    public void setCoverLetter(String coverLetter) {
+        this.coverLetter = coverLetter;
+    }
+
+    public ApplicationStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ApplicationStatus status) {
+        this.status = status;
+    }
+
+    public Instant getAppliedAt() {
+        return appliedAt;
+    }
+
+    public void setAppliedAt(Instant appliedAt) {
+        this.appliedAt = appliedAt;
+    }
 }
