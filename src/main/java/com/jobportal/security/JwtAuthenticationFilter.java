@@ -3,11 +3,16 @@ package com.jobportal.security;
 
 import com.jobportal.model.UserAccount;
 import com.jobportal.repository.UserRepository;
+
 import io.jsonwebtoken.JwtException;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,6 +26,9 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     private final JwtService jwtService;
     private final UserRepository userRepository;
 
@@ -31,10 +39,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
     }
-   @Override
-protected boolean shouldNotFilter(HttpServletRequest request) {
-    return "OPTIONS".equalsIgnoreCase(request.getMethod());
-}
+
+    // Skip authentication for public authentication endpoints.
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+
+        String path = request.getServletPath();
+
+        return "OPTIONS".equalsIgnoreCase(request.getMethod())
+                || path.startsWith("/api/auth/");
+    }
 
     @Override
     protected void doFilterInternal(
@@ -45,46 +59,39 @@ protected boolean shouldNotFilter(HttpServletRequest request) {
 
         String header = request.getHeader("Authorization");
 
-        // No token: continue as an anonymous request.
-        // Spring Security decides whether authentication is required.
+        // Continue if no JWT is supplied.
         if (header == null || header.isBlank()) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Reject malformed authorization headers.
         if (!header.startsWith("Bearer ")) {
+
             SecurityContextHolder.clearContext();
+
             response.sendError(
                     HttpServletResponse.SC_UNAUTHORIZED,
                     "Invalid Authorization header"
             );
+
             return;
         }
 
         try {
+
             String token = header.substring(7).trim();
 
             if (token.isEmpty()) {
                 throw new IllegalArgumentException("Empty JWT token");
             }
 
-            // Extract email after JWT validation.
             String email = jwtService.extractEmail(token);
 
             UserAccount user = userRepository.findByEmail(email)
-                    .orElse(null);
+                    .orElseThrow(() ->
+                            new IllegalArgumentException("User not found")
+                    );
 
-            if (user == null) {
-                SecurityContextHolder.clearContext();
-                response.sendError(
-                        HttpServletResponse.SC_UNAUTHORIZED,
-                        "User not found"
-                );
-                return;
-            }
-
-            // Assign only the actual role of the authenticated user.
             var authorities = List.of(
                     new SimpleGrantedAuthority(
                             "ROLE_" + user.getRole().name()
@@ -101,7 +108,10 @@ protected boolean shouldNotFilter(HttpServletRequest request) {
             SecurityContextHolder.getContext()
                     .setAuthentication(authentication);
 
-        } catch (JwtException | IllegalArgumentException ex) {
+        } catch (JwtException | IllegalArgumentException exception) {
+
+            log.warn("JWT authentication failed: {}",
+                    exception.getMessage());
 
             SecurityContextHolder.clearContext();
 
