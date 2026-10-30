@@ -90,40 +90,55 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins:https://jobhire-web-ul1c.onrender.com,http://localhost:5173,http://127.0.0.1:5173}")
-            String allowedOrigins) {
+public SecurityFilterChain securityFilterChain(
+        HttpSecurity http,
+        CorsConfigurationSource corsConfigurationSource)
+        throws Exception {
 
-        CorsConfiguration configuration = new CorsConfiguration();
+    http
+        .csrf(csrf -> csrf.disable())
 
-        configuration.setAllowedOrigins(
-            Arrays.stream(allowedOrigins.split("\\s*,\\s*"))
-                .filter(origin -> !origin.isBlank())
-                .toList()
-        );
+        .cors(cors ->
+            cors.configurationSource(corsConfigurationSource)
+        )
 
-        configuration.setAllowedMethods(
-            List.of(
-                "GET", "POST", "PUT",
-                "PATCH", "DELETE", "OPTIONS"
+        .sessionManagement(session ->
+            session.sessionCreationPolicy(
+                SessionCreationPolicy.STATELESS
             )
+        )
+
+        .authorizeHttpRequests(auth -> auth
+
+            .requestMatchers(
+                HttpMethod.OPTIONS, "/**"
+            ).permitAll()
+
+            .requestMatchers(
+                "/", "/health", "/error"
+            ).permitAll()
+
+            .requestMatchers(
+                HttpMethod.GET,
+                "/api/jobs",
+                "/api/jobs/**"
+            ).permitAll()
+
+            .requestMatchers(
+                "/api/auth/**",
+                "/swagger-ui/**",
+                "/v3/api-docs/**"
+            ).permitAll()
+
+            .anyRequest().authenticated()
+        )
+
+        .addFilterBefore(
+            jwtAuthenticationFilter,
+            UsernamePasswordAuthenticationFilter.class
         );
 
-        configuration.setAllowedHeaders(
-            List.of("*")
-        );
-
-        configuration.setAllowCredentials(true);
-
-        configuration.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source =
-            new UrlBasedCorsConfigurationSource();
-
-        source.registerCorsConfiguration(
-            "/**", configuration
-        );
-
-        return source;
+    return http.build();
+}
     }
 }
