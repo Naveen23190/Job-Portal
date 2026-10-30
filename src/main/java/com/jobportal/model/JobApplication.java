@@ -34,7 +34,18 @@ public class JobApplication {
     private ApplicationStatus status = ApplicationStatus.SUBMITTED;
 
     @Column(nullable = false, updatable = false)
-    private Instant appliedAt = Instant.now();
+private Instant appliedAt;
+
+@PrePersist
+protected void onCreate() {
+    if (appliedAt == null) {
+        appliedAt = Instant.now();
+    }
+
+    if (status == null) {
+        status = ApplicationStatus.SUBMITTED;
+    }
+}
 
     public Long getId() {
         return id;
