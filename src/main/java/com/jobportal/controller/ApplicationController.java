@@ -15,7 +15,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.List;
 
 @RestController
@@ -25,6 +26,8 @@ public class ApplicationController {
     private final JobApplicationRepository applicationRepository;
     private final ObjectProvider<EmailNotificationService> emailNotifications;
     private final LiveUpdateService liveUpdates;
+    private static final Logger log =
+        LoggerFactory.getLogger(ApplicationController.class);
 
     public ApplicationController(
             JobRepository jobRepository,
