@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
     }
-    @Override
+   @Override
 protected boolean shouldNotFilter(HttpServletRequest request) {
     return "OPTIONS".equalsIgnoreCase(request.getMethod());
 }
