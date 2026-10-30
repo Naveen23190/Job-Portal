@@ -45,8 +45,15 @@ public class UserAccount {
     @Column(length = 160)
     private String companyName;
 
-    @Column(nullable = false, updatable = false)
-    private Instant createdAt = Instant.now();
+   @Column(nullable = false, updatable = false)
+private Instant createdAt;
+
+@PrePersist
+protected void onCreate() {
+    if (createdAt == null) {
+        createdAt = Instant.now();
+    }
+}
 
     public Long getId() {
         return id;
