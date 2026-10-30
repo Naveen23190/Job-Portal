@@ -1,10 +1,8 @@
 
 package com.jobportal.security;
 
-import java.util.Arrays;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -30,6 +28,7 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
+    // Security configuration
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
@@ -39,7 +38,6 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
 
-            // Apply CORS before Spring Security authorization
             .cors(cors ->
                 cors.configurationSource(corsConfigurationSource)
             )
@@ -84,61 +82,59 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // Password encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // CORS configuration
     @Bean
-public SecurityFilterChain securityFilterChain(
-        HttpSecurity http,
-        CorsConfigurationSource corsConfigurationSource)
-        throws Exception {
+    public CorsConfigurationSource corsConfigurationSource() {
 
-    http
-        .csrf(csrf -> csrf.disable())
+        CorsConfiguration configuration = new CorsConfiguration();
 
-        .cors(cors ->
-            cors.configurationSource(corsConfigurationSource)
-        )
-
-        .sessionManagement(session ->
-            session.sessionCreationPolicy(
-                SessionCreationPolicy.STATELESS
+        configuration.setAllowedOrigins(
+            List.of(
+                "https://jobhire-web-ul1c.onrender.com",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173"
             )
-        )
-
-        .authorizeHttpRequests(auth -> auth
-
-            .requestMatchers(
-                HttpMethod.OPTIONS, "/**"
-            ).permitAll()
-
-            .requestMatchers(
-                "/", "/health", "/error"
-            ).permitAll()
-
-            .requestMatchers(
-                HttpMethod.GET,
-                "/api/jobs",
-                "/api/jobs/**"
-            ).permitAll()
-
-            .requestMatchers(
-                "/api/auth/**",
-                "/swagger-ui/**",
-                "/v3/api-docs/**"
-            ).permitAll()
-
-            .anyRequest().authenticated()
-        )
-
-        .addFilterBefore(
-            jwtAuthenticationFilter,
-            UsernamePasswordAuthenticationFilter.class
         );
 
-    return http.build();
-}
+        configuration.setAllowedMethods(
+            List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+            )
+        );
+
+        configuration.setAllowedHeaders(
+            List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Origin",
+                "X-Requested-With"
+            )
+        );
+
+        configuration.setAllowCredentials(true);
+
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source =
+            new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration(
+            "/**",
+            configuration
+        );
+
+        return source;
     }
 }
