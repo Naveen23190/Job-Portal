@@ -25,7 +25,8 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
@@ -38,6 +39,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
 
+            // Apply CORS before Spring Security authorization
             .cors(cors ->
                 cors.configurationSource(corsConfigurationSource)
             )
@@ -54,26 +56,23 @@ public class SecurityConfig {
                     HttpMethod.OPTIONS, "/**"
                 ).permitAll()
 
-                // Root and health endpoints
                 .requestMatchers(
-                    "/", "/error", "/actuator/health"
+                    "/", "/health", "/error",
+                    "/actuator/health"
                 ).permitAll()
 
-                // Public job listings
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/jobs",
                     "/api/jobs/**"
                 ).permitAll()
 
-                // Authentication endpoints
                 .requestMatchers(
                     "/api/auth/**",
                     "/swagger-ui/**",
                     "/v3/api-docs/**"
                 ).permitAll()
 
-                // All other endpoints require authentication
                 .anyRequest().authenticated()
             )
 
@@ -92,7 +91,7 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}")
+            @Value("${app.cors.allowed-origins:https://jobhire-web-ul1c.onrender.com,http://localhost:5173,http://127.0.0.1:5173}")
             String allowedOrigins) {
 
         CorsConfiguration configuration = new CorsConfiguration();
@@ -115,6 +114,8 @@ public class SecurityConfig {
         );
 
         configuration.setAllowCredentials(true);
+
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source =
             new UrlBasedCorsConfigurationSource();
