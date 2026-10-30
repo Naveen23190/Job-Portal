@@ -40,34 +40,92 @@ public class ApplicationController {
         this.liveUpdates = liveUpdates;
     }
 
-    @PostMapping("/jobs/{jobId}/applications")
-    @PreAuthorize("hasRole('JOB_SEEKER')")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApplicationResponse apply(@PathVariable Long jobId,
-                                     @Valid @RequestBody ApplicationRequest request,
-                                     @AuthenticationPrincipal UserAccount applicant) {
-        JobPosting job = findJob(jobId);
-        if (job.getStatus() != JobStatus.OPEN) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This job is no longer accepting applications");
-        }
-        if (applicationRepository.existsByJobIdAndApplicantId(jobId, applicant.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "You have already applied to this job");
-        }
-        JobApplication application = new JobApplication();
-        application.setJob(job);
-        application.setApplicant(applicant);
-        application.setCoverLetter(request.coverLetter());
-        JobApplication saved = applicationRepository.save(application);
-        liveUpdates.publishApplicationUpdate(applicant.getId());
-        liveUpdates.publishApplicationUpdate(job.getEmployer().getId());
-        emailNotifications.ifAvailable(notifications -> notifications.applicationSubmitted(
-                applicant.getEmail(), applicant.getFullName(),
-                job.getEmployer().getEmail(),
-                job.getEmployer().getCompanyName() == null
-                        ? job.getEmployer().getFullName() : job.getEmployer().getCompanyName(),
-                job.getTitle()));
-        return toResponse(saved);
+
+@PostMapping("/jobs/{jobId}/applications")
+@PreAuthorize("hasRole('JOB_SEEKER')")
+@ResponseStatus(HttpStatus.CREATED)
+public ApplicationResponse apply(
+        @PathVariable Long jobId,
+        @Valid @RequestBody ApplicationRequest request,
+        @AuthenticationPrincipal UserAccount applicant) {
+
+    if (applicant == null) {
+        throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "Please sign in to apply for this job"
+        );
     }
+
+    JobPosting job = findJob(jobId);
+
+    if (job.getStatus() != JobStatus.OPEN) {
+        throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "This job is no longer accepting applications"
+        );
+    }
+
+    if (applicationRepository.existsByJobIdAndApplicantId(
+            jobId, applicant.getId())) {
+
+        throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "You have already applied to this job"
+        );
+    }
+
+    JobApplication application = new JobApplication();
+
+    application.setJob(job);
+    application.setApplicant(applicant);
+    application.setCoverLetter(request.coverLetter());
+
+    // Save the application first.
+    JobApplication saved =
+            applicationRepository.saveAndFlush(application);
+
+    // Build the response before running optional notifications.
+    ApplicationResponse result = toResponse(saved);
+
+    // Live updates should not break application submission.
+    try {
+        liveUpdates.publishApplicationUpdate(applicant.getId());
+
+        liveUpdates.publishApplicationUpdate(
+                job.getEmployer().getId()
+        );
+
+    } catch (Exception exception) {
+        log.error(
+                "Application saved, but live notification failed",
+                exception
+        );
+    }
+
+    // Email notification should not break application submission.
+    try {
+        emailNotifications.ifAvailable(notifications ->
+                notifications.applicationSubmitted(
+                        applicant.getEmail(),
+                        applicant.getFullName(),
+                        job.getEmployer().getEmail(),
+                        job.getEmployer().getCompanyName() == null
+                                ? job.getEmployer().getFullName()
+                                : job.getEmployer().getCompanyName(),
+                        job.getTitle()
+                )
+        );
+
+    } catch (Exception exception) {
+        log.error(
+                "Application saved, but email notification failed",
+                exception
+        );
+    }
+
+    return result;
+}
+
 
     @GetMapping("/applications/me")
     @PreAuthorize("hasRole('JOB_SEEKER')")
