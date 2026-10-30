@@ -92,4 +92,7 @@ public interface JobRepository extends JpaRepository<JobPosting, Long> {
     @Override
     @EntityGraph(attributePaths = "employer")
     List<JobPosting> findAll();
+
+    @EntityGraph(attributePaths = {"employer"})
+    Optional<JobPosting> findWithEmployerById(Long id
 }
