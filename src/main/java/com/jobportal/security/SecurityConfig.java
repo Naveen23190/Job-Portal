@@ -25,31 +25,38 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(
-            JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            CorsConfigurationSource corsConfigurationSource)
             throws Exception {
 
         http
             .csrf(csrf -> csrf.disable())
 
-            .cors(cors -> cors.configurationSource(
-                    corsConfigurationSource(null)))
+            .cors(cors ->
+                cors.configurationSource(corsConfigurationSource)
+            )
 
             .sessionManagement(session ->
                 session.sessionCreationPolicy(
-                    SessionCreationPolicy.STATELESS)
+                    SessionCreationPolicy.STATELESS
+                )
             )
 
             .authorizeHttpRequests(auth -> auth
 
-                // Allow preflight requests
                 .requestMatchers(
                     HttpMethod.OPTIONS, "/**"
+                ).permitAll()
+
+                // Root and health endpoints
+                .requestMatchers(
+                    "/", "/error", "/actuator/health"
                 ).permitAll()
 
                 // Public job listings
@@ -59,14 +66,14 @@ public class SecurityConfig {
                     "/api/jobs/**"
                 ).permitAll()
 
-                // Public authentication endpoints
+                // Authentication endpoints
                 .requestMatchers(
                     "/api/auth/**",
                     "/swagger-ui/**",
                     "/v3/api-docs/**"
                 ).permitAll()
 
-                // Protect everything else
+                // All other endpoints require authentication
                 .anyRequest().authenticated()
             )
 
@@ -97,18 +104,24 @@ public class SecurityConfig {
         );
 
         configuration.setAllowedMethods(
-            List.of("GET", "POST", "PUT", "PATCH",
-                    "DELETE", "OPTIONS")
+            List.of(
+                "GET", "POST", "PUT",
+                "PATCH", "DELETE", "OPTIONS"
+            )
         );
 
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(
+            List.of("*")
+        );
 
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source =
             new UrlBasedCorsConfigurationSource();
 
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration(
+            "/**", configuration
+        );
 
         return source;
     }
