@@ -4,7 +4,12 @@ package com.jobportal.controller;
 import com.jobportal.dto.ApplicationRequest;
 import com.jobportal.dto.ApplicationResponse;
 import com.jobportal.dto.StatusRequest;
-import com.jobportal.model.*;
+import com.jobportal.model.ApplicationStatus;
+import com.jobportal.model.JobApplication;
+import com.jobportal.model.JobPosting;
+import com.jobportal.model.JobStatus;
+import com.jobportal.model.Role;
+import com.jobportal.model.UserAccount;
 import com.jobportal.repository.JobApplicationRepository;
 import com.jobportal.repository.JobRepository;
 import com.jobportal.service.EmailNotificationService;
@@ -49,9 +54,9 @@ public class ApplicationController {
         this.liveUpdates = liveUpdates;
     }
 
-    // ----------------------------------------------------
+    // ====================================================
     // APPLY FOR A JOB
-    // ----------------------------------------------------
+    // ====================================================
 
     @PostMapping("/jobs/{jobId}/applications")
     @PreAuthorize("hasRole('JOB_SEEKER')")
@@ -93,15 +98,17 @@ public class ApplicationController {
         application.setApplicant(applicant);
         application.setCoverLetter(request.coverLetter());
 
-        JobApplication saved = applicationRepository.saveAndFlush(application);
+        JobApplication saved =
+                applicationRepository.saveAndFlush(application);
 
-        // Build response before triggering external notifications.
         ApplicationResponse response = toResponse(saved);
 
-        // Publish live updates independently.
+        // Publish live updates.
         try {
             liveUpdates.publishApplicationUpdate(applicant.getId());
-            liveUpdates.publishApplicationUpdate(job.getEmployer().getId());
+            liveUpdates.publishApplicationUpdate(
+                    job.getEmployer().getId()
+            );
 
         } catch (RuntimeException exception) {
             logger.error(
@@ -111,7 +118,7 @@ public class ApplicationController {
             );
         }
 
-        // Send email notifications independently.
+        // Trigger email notifications.
         try {
             emailNotifications.ifAvailable(notifications ->
                     notifications.applicationSubmitted(
@@ -136,9 +143,9 @@ public class ApplicationController {
         return response;
     }
 
-    // ----------------------------------------------------
+    // ====================================================
     // GET MY APPLICATIONS
-    // ----------------------------------------------------
+    // ====================================================
 
     @GetMapping("/applications/me")
     @PreAuthorize("hasRole('JOB_SEEKER')")
@@ -160,9 +167,9 @@ public class ApplicationController {
                 .toList();
     }
 
-    // ----------------------------------------------------
+    // ====================================================
     // GET APPLICATIONS FOR A JOB
-    // ----------------------------------------------------
+    // ====================================================
 
     @GetMapping("/jobs/{jobId}/applications")
     @PreAuthorize("hasAnyRole('EMPLOYER','ADMIN')")
@@ -182,9 +189,9 @@ public class ApplicationController {
                 .toList();
     }
 
-    // ----------------------------------------------------
+    // ====================================================
     // UPDATE APPLICATION STATUS
-    // ----------------------------------------------------
+    // ====================================================
 
     @PatchMapping("/applications/{applicationId}/status")
     @PreAuthorize("hasAnyRole('EMPLOYER','ADMIN')")
@@ -198,26 +205,24 @@ public class ApplicationController {
 
         verifyOwnerOrAdmin(application.getJob(), currentUser);
 
-        ApplicationStatus newStatus;
+        // StatusRequest.status() returns ApplicationStatus.
+        ApplicationStatus newStatus = request.status();
 
-        try {
-            newStatus = ApplicationStatus.valueOf(
-                    request.status().trim().toUpperCase()
-            );
-
-        } catch (IllegalArgumentException | NullPointerException exception) {
+        if (newStatus == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Invalid application status"
+                    "Application status cannot be null"
             );
         }
 
         application.setStatus(newStatus);
 
-        JobApplication saved = applicationRepository.saveAndFlush(application);
+        JobApplication saved =
+                applicationRepository.saveAndFlush(application);
 
         ApplicationResponse response = toResponse(saved);
 
+        // Notify applicant about status change.
         try {
             UserAccount applicant = saved.getApplicant();
 
@@ -241,9 +246,9 @@ public class ApplicationController {
         return response;
     }
 
-    // ----------------------------------------------------
+    // ====================================================
     // WITHDRAW APPLICATION
-    // ----------------------------------------------------
+    // ====================================================
 
     @PatchMapping("/applications/{applicationId}/withdraw")
     @PreAuthorize("hasRole('JOB_SEEKER')")
@@ -261,7 +266,9 @@ public class ApplicationController {
 
         JobApplication application = findApplication(applicationId);
 
-        if (!application.getApplicant().getId().equals(applicant.getId())) {
+        if (!application.getApplicant().getId()
+                .equals(applicant.getId())) {
+
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "You cannot withdraw another user's application"
@@ -277,7 +284,8 @@ public class ApplicationController {
 
         application.setStatus(ApplicationStatus.WITHDRAWN);
 
-        JobApplication saved = applicationRepository.saveAndFlush(application);
+        JobApplication saved =
+                applicationRepository.saveAndFlush(application);
 
         ApplicationResponse response = toResponse(saved);
 
@@ -308,9 +316,9 @@ public class ApplicationController {
         return response;
     }
 
-    // ----------------------------------------------------
-    // FIND JOB
-    // ----------------------------------------------------
+    // ====================================================
+    // FIND JOB WITH EMPLOYER
+    // ====================================================
 
     private JobPosting findJob(Long id) {
 
@@ -321,9 +329,9 @@ public class ApplicationController {
                 ));
     }
 
-    // ----------------------------------------------------
+    // ====================================================
     // FIND APPLICATION
-    // ----------------------------------------------------
+    // ====================================================
 
     private JobApplication findApplication(Long id) {
 
@@ -334,9 +342,9 @@ public class ApplicationController {
                 ));
     }
 
-    // ----------------------------------------------------
+    // ====================================================
     // VERIFY JOB OWNER OR ADMIN
-    // ----------------------------------------------------
+    // ====================================================
 
     private void verifyOwnerOrAdmin(
             JobPosting job,
@@ -363,11 +371,12 @@ public class ApplicationController {
         }
     }
 
-    // ----------------------------------------------------
+    // ====================================================
     // CONVERT ENTITY TO RESPONSE DTO
-    // ----------------------------------------------------
+    // ====================================================
 
-    private ApplicationResponse toResponse(JobApplication application) {
+    private ApplicationResponse toResponse(
+            JobApplication application) {
 
         UserAccount applicant = application.getApplicant();
 
